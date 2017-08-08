@@ -16,9 +16,12 @@
 
 package com.navercorp.pinpoint.collector.config;
 
-import com.navercorp.pinpoint.common.util.PropertyUtils;
-import com.navercorp.pinpoint.common.util.SimpleProperty;
-import com.navercorp.pinpoint.common.util.SystemProperty;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
@@ -26,11 +29,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
 
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
+import com.navercorp.pinpoint.common.util.PropertyUtils;
+import com.navercorp.pinpoint.common.util.SimpleProperty;
+import com.navercorp.pinpoint.common.util.SystemProperty;
 
 /**
  * @author emeroad
@@ -60,7 +61,6 @@ public class CollectorConfiguration implements InitializingBean {
     private String udpStatListenIp = DEFAULT_LISTEN_IP;
     private int udpStatListenPort;
 
-    private String udpStatWorkerType;
     private int udpStatWorkerThread;
     private int udpStatWorkerQueueSize;
     private boolean udpStatWorkerMonitor;
@@ -69,7 +69,6 @@ public class CollectorConfiguration implements InitializingBean {
     private String udpSpanListenIp = DEFAULT_LISTEN_IP;
     private int udpSpanListenPort;
 
-    private String udpSpanWorkerType;
     private int udpSpanWorkerThread;
     private int udpSpanWorkerQueueSize;
     private boolean udpSpanWorkerMonitor;
@@ -86,6 +85,34 @@ public class CollectorConfiguration implements InitializingBean {
 
     private String clusterListenIp;
     private int clusterListenPort;
+
+    private boolean flinkClusterEnable;
+    private String flinkClusterZookeeperAddress;
+    private int flinkClusterSessionTimeout;
+
+    public void setFlinkClusterEnable(boolean flinkClusterEnable) {
+        this.flinkClusterEnable = flinkClusterEnable;
+    }
+
+    public void setFlinkClusterZookeeperAddress(String flinkClusterZookeeperAddress) {
+        this.flinkClusterZookeeperAddress = flinkClusterZookeeperAddress;
+    }
+
+    public void setFlinkClusterSessionTimeout(int flinkClusterSessionTimeout) {
+        this.flinkClusterSessionTimeout = flinkClusterSessionTimeout;
+    }
+
+    public boolean isFlinkClusterEnable() {
+        return flinkClusterEnable;
+    }
+
+    public String getFlinkClusterZookeeperAddress() {
+        return flinkClusterZookeeperAddress;
+    }
+
+    public int getFlinkClusterSessionTimeout() {
+        return flinkClusterSessionTimeout;
+    }
 
     public String getTcpListenIp() {
         return tcpListenIp;
@@ -143,14 +170,6 @@ public class CollectorConfiguration implements InitializingBean {
         this.udpStatListenPort = udpStatListenPort;
     }
 
-    public String getUdpStatWorkerType() {
-        return udpStatWorkerType;
-    }
-
-    public void setUdpStatWorkerType(String udpStatWorkerType) {
-        this.udpStatWorkerType = udpStatWorkerType;
-    }
-
     public int getUdpStatWorkerThread() {
         return udpStatWorkerThread;
     }
@@ -197,14 +216,6 @@ public class CollectorConfiguration implements InitializingBean {
 
     public void setUdpSpanListenPort(int udpSpanListenPort) {
         this.udpSpanListenPort = udpSpanListenPort;
-    }
-
-    public String getUdpSpanWorkerType() {
-        return udpSpanWorkerType;
-    }
-
-    public void setUdpSpanWorkerType(String udpSpanWorkerType) {
-        this.udpSpanWorkerType = udpSpanWorkerType;
     }
 
     public int getUdpSpanWorkerThread() {
@@ -329,7 +340,7 @@ public class CollectorConfiguration implements InitializingBean {
         readPropertyValues(this.properties);
     }
 
-    private void readPropertyValues(Properties properties) {
+    protected  void readPropertyValues(Properties properties) {
         logger.info("pinpoint-collector.properties read.");
         this.tcpListenIp = readString(properties, "collector.tcpListenIp", DEFAULT_LISTEN_IP);
         this.tcpListenPort = readInt(properties, "collector.tcpListenPort", 9994);
@@ -341,7 +352,6 @@ public class CollectorConfiguration implements InitializingBean {
         this.udpStatListenIp = readString(properties, "collector.udpStatListenIp", DEFAULT_LISTEN_IP);
         this.udpStatListenPort = readInt(properties, "collector.udpStatListenPort", 9995);
 
-        this.udpStatWorkerType = readString(properties, "collector.udpStatWorkerType", "DEFAULT_EXECUTOR");
         this.udpStatWorkerThread = readInt(properties, "collector.udpStatWorkerThread", 128);
         this.udpStatWorkerQueueSize = readInt(properties, "collector.udpStatWorkerQueueSize", 1024);
         this.udpStatWorkerMonitor = readBoolean(properties, "collector.udpStatWorker.monitor");
@@ -350,7 +360,6 @@ public class CollectorConfiguration implements InitializingBean {
         this.udpSpanListenIp = readString(properties, "collector.udpSpanListenIp", DEFAULT_LISTEN_IP);
         this.udpSpanListenPort = readInt(properties, "collector.udpSpanListenPort", udpSpanListenPort);
 
-        this.udpSpanWorkerType = readString(properties, "collector.udpSpanWorkerType", "DEFAULT_EXECUTOR");
         this.udpSpanWorkerThread = readInt(properties, "collector.udpSpanWorkerThread", 256);
         this.udpSpanWorkerQueueSize = readInt(properties, "collector.udpSpanWorkerQueueSize", 1024 * 5);
         this.udpSpanWorkerMonitor = readBoolean(properties, "collector.udpSpanWorker.monitor");
@@ -358,6 +367,10 @@ public class CollectorConfiguration implements InitializingBean {
         
         this.agentEventWorkerThreadSize = readInt(properties, "collector.agentEventWorker.threadSize", 32);
         this.agentEventWorkerQueueSize = readInt(properties, "collector.agentEventWorker.queueSize", 1024 * 5);
+
+        this.flinkClusterEnable = readBoolean(properties, "flink.cluster.enable");
+        this.flinkClusterZookeeperAddress = readString(properties, "flink.cluster.zookeeper.address", "");
+        this.flinkClusterSessionTimeout = readInt(properties, "flink.cluster.zookeeper.sessiontimeout", -1);
         
         String[] l4Ips = StringUtils.split(readString(properties, "collector.l4.ip", null), ",");
         if (l4Ips == null) {
@@ -379,7 +392,7 @@ public class CollectorConfiguration implements InitializingBean {
         this.clusterListenPort = readInt(properties, "cluster.listen.port", -1);
     }
 
-    private String readString(Properties properties, String propertyName, String defaultValue) {
+    protected  String readString(Properties properties, String propertyName, String defaultValue) {
         final String result = properties.getProperty(propertyName, defaultValue);
         if (logger.isInfoEnabled()) {
             logger.info("{}={}", propertyName, result);
@@ -387,22 +400,31 @@ public class CollectorConfiguration implements InitializingBean {
         return result ;
     }
 
-    private int readInt(Properties properties, String propertyName, int defaultValue) {
+    protected  int readInt(Properties properties, String propertyName, int defaultValue) {
         final String value = properties.getProperty(propertyName);
-        int result = NumberUtils.toInt(value, defaultValue);
+        final int result = NumberUtils.toInt(value, defaultValue);
         if (logger.isInfoEnabled()) {
             logger.info("{}={}", propertyName, result);
         }
         return result;
     }
-    
-    private boolean readBoolean(Properties properties, String propertyName) {
+
+    protected  long readLong(Properties properties, String propertyName, long defaultValue) {
+        final String value = properties.getProperty(propertyName);
+        final long result = NumberUtils.toLong(value, defaultValue);
+        if (logger.isInfoEnabled()) {
+            logger.info("{}={}", propertyName, result);
+        }
+        return result;
+    }
+
+    protected boolean readBoolean(Properties properties, String propertyName) {
         final String value = properties.getProperty(propertyName);
         
         // if a default value will be needed afterwards, may match string value instead of Utils.
         // for now stay unmodified because of no need.
 
-        boolean result = Boolean.valueOf(value);
+        final boolean result = Boolean.valueOf(value);
         if (logger.isInfoEnabled()) {
             logger.info("{}={}", propertyName, result);
         }
@@ -420,14 +442,12 @@ public class CollectorConfiguration implements InitializingBean {
         sb.append(", tcpWorkerMonitor=").append(tcpWorkerMonitor);
         sb.append(", udpStatListenIp='").append(udpStatListenIp).append('\'');
         sb.append(", udpStatListenPort=").append(udpStatListenPort);
-        sb.append(", udpStatWorkerType=").append(udpStatWorkerType);
         sb.append(", udpStatWorkerThread=").append(udpStatWorkerThread);
         sb.append(", udpStatWorkerQueueSize=").append(udpStatWorkerQueueSize);
         sb.append(", udpStatWorkerMonitor=").append(udpStatWorkerMonitor);
         sb.append(", udpStatSocketReceiveBufferSize=").append(udpStatSocketReceiveBufferSize);
         sb.append(", udpSpanListenIp='").append(udpSpanListenIp).append('\'');
         sb.append(", udpSpanListenPort=").append(udpSpanListenPort);
-        sb.append(", udpSpanWorkerType=").append(udpSpanWorkerType);
         sb.append(", udpSpanWorkerThread=").append(udpSpanWorkerThread);
         sb.append(", udpSpanWorkerQueueSize=").append(udpSpanWorkerQueueSize);
         sb.append(", udpSpanWorkerMonitor=").append(udpSpanWorkerMonitor);

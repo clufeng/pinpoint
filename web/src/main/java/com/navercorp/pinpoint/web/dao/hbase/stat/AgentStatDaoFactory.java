@@ -16,19 +16,28 @@
 
 package com.navercorp.pinpoint.web.dao.hbase.stat;
 
+import com.navercorp.pinpoint.common.hbase.HBaseAdminTemplate;
+import com.navercorp.pinpoint.common.hbase.HBaseTables;
 import com.navercorp.pinpoint.common.server.bo.stat.ActiveTraceBo;
 import com.navercorp.pinpoint.common.server.bo.stat.AgentStatDataPoint;
 import com.navercorp.pinpoint.common.server.bo.stat.CpuLoadBo;
+import com.navercorp.pinpoint.common.server.bo.stat.DataSourceListBo;
+import com.navercorp.pinpoint.common.server.bo.stat.DeadlockBo;
 import com.navercorp.pinpoint.common.server.bo.stat.JvmGcBo;
 import com.navercorp.pinpoint.common.server.bo.stat.JvmGcDetailedBo;
+import com.navercorp.pinpoint.common.server.bo.stat.ResponseTimeBo;
 import com.navercorp.pinpoint.common.server.bo.stat.TransactionBo;
 import com.navercorp.pinpoint.web.dao.hbase.stat.compatibility.HbaseAgentStatDualReadDao;
 import com.navercorp.pinpoint.web.dao.stat.ActiveTraceDao;
 import com.navercorp.pinpoint.web.dao.stat.AgentStatDao;
 import com.navercorp.pinpoint.web.dao.stat.CpuLoadDao;
+import com.navercorp.pinpoint.web.dao.stat.DataSourceDao;
+import com.navercorp.pinpoint.web.dao.stat.DeadlockDao;
 import com.navercorp.pinpoint.web.dao.stat.JvmGcDao;
 import com.navercorp.pinpoint.web.dao.stat.JvmGcDetailedDao;
+import com.navercorp.pinpoint.web.dao.stat.ResponseTimeDao;
 import com.navercorp.pinpoint.web.dao.stat.TransactionDao;
+import org.apache.hadoop.hbase.TableName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
@@ -47,19 +56,37 @@ abstract class AgentStatDaoFactory<T extends AgentStatDataPoint, D extends Agent
     protected D v1;
     protected D v2;
 
-    @Value("#{pinpointWebProps['web.experimental.stat.format.compatibility.version'] ?: 'v1'}")
-    private String mode = "v1";
+    @Autowired
+    private HBaseAdminTemplate adminTemplate;
+
+    @Value("#{pinpointWebProps['web.stat.format.compatibility.version'] ?: 'v2'}")
+    private String mode = "v2";
 
     D getDao() throws Exception {
         logger.info("AgentStatDao Compatibility {}", mode);
-        if (mode.equalsIgnoreCase("v1")) {
-            return v1;
-        } else if (mode.equalsIgnoreCase("v2")) {
-            return v2;
+
+        final TableName v1TableName = HBaseTables.AGENT_STAT;
+        final TableName v2TableName = HBaseTables.AGENT_STAT_VER2;
+
+        if (mode.equalsIgnoreCase("v2")) {
+            if (this.adminTemplate.tableExists(v2TableName)) {
+                return v2;
+            } else {
+                logger.error("AgentStatDao configured for v2, but {} table does not exist", v2TableName);
+                throw new IllegalStateException(v2TableName + " table does not exist");
+            }
         } else if (mode.equalsIgnoreCase("compatibilityMode")) {
-            return getCompatibilityDao(this.v1, this.v2);
+            boolean v1TableExists = this.adminTemplate.tableExists(v1TableName);
+            boolean v2TableExists = this.adminTemplate.tableExists(v2TableName);
+            if (v1TableExists && v2TableExists) {
+                return getCompatibilityDao(this.v1, this.v2);
+            } else {
+                logger.error("AgentStatDao configured for compatibilityMode, but {} and {} tables do not exist", v1TableName, v2TableName);
+                throw new IllegalStateException(v1TableName + ", " + v2TableName + " tables do not exist");
+            }
+        } else {
+            throw new IllegalStateException("Unknown AgentStatDao configuration : " + mode);
         }
-        return v1;
     }
 
     abstract D getCompatibilityDao(D v1, D v2);
@@ -233,4 +260,107 @@ abstract class AgentStatDaoFactory<T extends AgentStatDataPoint, D extends Agent
             return new HbaseAgentStatDualReadDao.ActiveTraceDualReadDao(v2, v1);
         }
     }
+
+    @Repository("dataSourceDaoFactory")
+    public static class DataSourceDaoFactory extends AgentStatDaoFactory<DataSourceListBo, DataSourceDao> implements FactoryBean<DataSourceDao> {
+
+        @Autowired
+        public void setV1(@Qualifier("dataSourceDaoV1") DataSourceDao v1) {
+            this.v1 = v1;
+        }
+
+        @Autowired
+        public void setV2(@Qualifier("dataSourceDaoV2") DataSourceDao v2) {
+            this.v2 = v2;
+        }
+
+        @Override
+        public DataSourceDao getObject() throws Exception {
+            return super.getDao();
+        }
+
+        @Override
+        public Class<?> getObjectType() {
+            return DataSourceDao.class;
+        }
+
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+
+        @Override
+        DataSourceDao getCompatibilityDao(DataSourceDao v1, DataSourceDao v2) {
+            return new HbaseAgentStatDualReadDao.DataSourceDualReadDao(v2, v1);
+        }
+    }
+
+    @Repository("responseTimeDaoFactory")
+    public static class ResponseTimeDaoFactory extends AgentStatDaoFactory<ResponseTimeBo, ResponseTimeDao> implements FactoryBean<ResponseTimeDao> {
+
+        @Autowired
+        public void setV1(@Qualifier("responseTimeDaoV1") ResponseTimeDao v1) {
+            this.v1 = v1;
+        }
+
+        @Autowired
+        public void setV2(@Qualifier("responseTimeDaoV2") ResponseTimeDao v2) {
+            this.v2 = v2;
+        }
+
+        @Override
+        public ResponseTimeDao getObject() throws Exception {
+            return super.getDao();
+        }
+
+        @Override
+        public Class<?> getObjectType() {
+            return ResponseTimeDao.class;
+        }
+
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+
+        @Override
+        ResponseTimeDao getCompatibilityDao(ResponseTimeDao v1, ResponseTimeDao v2) {
+            return new HbaseAgentStatDualReadDao.ResponseTimeDualReadDao(v2, v1);
+        }
+    }
+
+    @Repository("deadlockDaoFactory")
+    public static class DeadlockDaoFactory extends AgentStatDaoFactory<DeadlockBo, DeadlockDao> implements FactoryBean<DeadlockDao> {
+
+        @Autowired
+        public void setV1(@Qualifier("deadlockDaoV1") DeadlockDao v1) {
+            this.v1 = v1;
+        }
+
+        @Autowired
+        public void setV2(@Qualifier("deadlockDaoV2") DeadlockDao v2) {
+            this.v2 = v2;
+        }
+
+        @Override
+        public DeadlockDao getObject() throws Exception {
+            return super.getDao();
+        }
+
+        @Override
+        public Class<?> getObjectType() {
+            return ResponseTimeDao.class;
+        }
+
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+
+        @Override
+        DeadlockDao getCompatibilityDao(DeadlockDao v1, DeadlockDao v2) {
+            return new HbaseAgentStatDualReadDao.DeadlockDualReadDao(v2, v1);
+        }
+    }
+
 }

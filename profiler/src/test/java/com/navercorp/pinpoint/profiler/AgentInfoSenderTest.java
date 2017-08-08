@@ -27,6 +27,7 @@ import com.navercorp.pinpoint.profiler.context.DefaultServerMetaData;
 import com.navercorp.pinpoint.profiler.context.DefaultServerMetaDataHolder;
 import com.navercorp.pinpoint.profiler.sender.TcpDataSender;
 import com.navercorp.pinpoint.rpc.PinpointSocket;
+import com.navercorp.pinpoint.rpc.client.DefaultPinpointClientFactory;
 import com.navercorp.pinpoint.rpc.client.PinpointClient;
 import com.navercorp.pinpoint.rpc.client.PinpointClientFactory;
 import com.navercorp.pinpoint.rpc.client.PinpointClientReconnectEventListener;
@@ -53,6 +54,7 @@ import org.springframework.util.SocketUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -473,7 +475,7 @@ public class AgentInfoSenderTest {
     }
 
     private AgentInformation getAgentInfo() {
-        AgentInformation agentInfo = new AgentInformation("agentId", "appName", System.currentTimeMillis(), 1111, "hostname", "127.0.0.1", ServiceType.USER,
+        AgentInformation agentInfo = new DefaultAgentInformation("agentId", "appName", System.currentTimeMillis(), 1111, "hostname", "127.0.0.1", ServiceType.USER,
                 JvmUtils.getSystemProperty(SystemPropertyKey.JAVA_VERSION), Version.VERSION);
         return agentInfo;
     }
@@ -496,12 +498,12 @@ public class AgentInfoSenderTest {
 
         @Override
         public void handleSend(SendPacket sendPacket, PinpointSocket pinpointSocket) {
-            logger.info("handleSend packet:{}, remote:{}", sendPacket, pinpointSocket.getRemoteAddress());
+            logger.debug("handleSend packet:{}, remote:{}", sendPacket, pinpointSocket.getRemoteAddress());
         }
 
         @Override
         public void handleRequest(RequestPacket requestPacket, PinpointSocket pinpointSocket) {
-            logger.info("handleRequest packet:{}, remote:{}", requestPacket, pinpointSocket.getRemoteAddress());
+            logger.debug("handleRequest packet:{}, remote:{}", requestPacket, pinpointSocket.getRemoteAddress());
 
             int requestCount = this.requestCount.incrementAndGet();
             if (requestCount < successCondition) {
@@ -530,12 +532,12 @@ public class AgentInfoSenderTest {
 
         @Override
         public void handlePing(PingPacket pingPacket, PinpointServer pinpointServer) {
-            logger.info("ping received {} {} ", pingPacket, pinpointServer);
+            logger.debug("ping received {} {} ", pingPacket, pinpointServer);
         }
     }
 
     private PinpointClientFactory createPinpointClientFactory() {
-        PinpointClientFactory clientFactory = new PinpointClientFactory();
+        PinpointClientFactory clientFactory = new DefaultPinpointClientFactory();
         clientFactory.setTimeoutMillis(1000 * 5);
         clientFactory.setProperties(Collections.<String, Object> emptyMap());
 
@@ -553,4 +555,12 @@ public class AgentInfoSenderTest {
         Assert.assertTrue(pass);
     }
 
+    @Test
+    public void test() {
+        Integer a = new Integer(1);
+        Integer b = 2;
+
+        Integer integer = Integer.valueOf(1);
+        System.out.println("a=" + System.identityHashCode(a) + " valueOf:" + System.identityHashCode(integer));
+    }
 }

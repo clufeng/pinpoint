@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2014 NAVER Corp.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.navercorp.pinpoint.plugin.cxf;
 import java.util.Arrays;
 
 import com.navercorp.pinpoint.bootstrap.config.ProfilerConfig;
+import com.navercorp.pinpoint.common.util.StringUtils;
 
 /**
  * @author barney
@@ -42,7 +43,7 @@ public class CxfPluginConfig {
     }
 
     private String[] getStringArray(String value) {
-        if (value == null || value.length() <= 0) {
+        if (StringUtils.isEmpty(value)) {
             return null;
         }
         String[] split = value.split(",");

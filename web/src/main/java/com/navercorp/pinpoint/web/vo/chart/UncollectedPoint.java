@@ -21,16 +21,15 @@ package com.navercorp.pinpoint.web.vo.chart;
  */
 public class UncollectedPoint<X extends Number, Y extends Number> extends Point<X, Y> {
 
-    public UncollectedPoint(X xVal) {
-        this(xVal, null);
-    }
-
     public UncollectedPoint(X xVal, Y uncollectedValue) {
-        super(xVal, uncollectedValue, uncollectedValue, uncollectedValue);
+        super(xVal, uncollectedValue);
     }
 
     @Override
     public String toString() {
-        return "UncollectedPoint{" + super.toString() + "}";
+        final StringBuilder sb = new StringBuilder("UncollectedPoint{");
+        sb.append(super.toString());
+        sb.append('}');
+        return sb.toString();
     }
 }

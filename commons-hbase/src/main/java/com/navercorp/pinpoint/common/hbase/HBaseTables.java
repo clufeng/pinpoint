@@ -38,7 +38,7 @@ public final class HBaseTables {
 
     @Deprecated public static final TableName AGENT_STAT = TableName.valueOf("AgentStat");
     public static final TableName AGENT_STAT_VER2 = TableName.valueOf("AgentStatV2");
-    public static final TableName AGENT_STAT_AGGR = TableName.valueOf("AgentStatAggr");
+
     public static final byte[] AGENT_STAT_CF_STATISTICS = Bytes.toBytes("S"); // agent statistics column family
     // FIXME (2014.08) Legacy column for storing serialzied TAgentStat Thrift DTO.
     @Deprecated public static final byte[] AGENT_STAT_CF_STATISTICS_V1 = Bytes.toBytes("V1"); // qualifier
@@ -119,5 +119,9 @@ public final class HBaseTables {
 
     public static final TableName HOST_APPLICATION_MAP_VER2 = TableName.valueOf("HostApplicationMap_Ver2");
     public static final byte[] HOST_APPLICATION_MAP_VER2_CF_MAP = Bytes.toBytes("M");
+
+    public static final int APPLICATION_STAT_TIMESPAN_MS = 5 * 60 * 1000;
+    public static final TableName APPLICATION_STAT_AGGRE = TableName.valueOf("ApplicationStatAggre");
+    public static final byte[] APPLICATION_STAT_CF_STATISTICS = Bytes.toBytes("S");
 
 }
